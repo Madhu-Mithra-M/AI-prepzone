@@ -26,6 +26,8 @@ else:
     print("GOOGLE_APPLICATION_CREDENTIALS_JSON not found.")
 
 
+
+
 try:
     project_id = "questionbot-lbwk"   
     credentials = service_account.Credentials.from_service_account_file("service-account.json")
@@ -36,6 +38,8 @@ except Exception as e:
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
+
+
 
 try:
     model = genai.GenerativeModel("models/gemini-1.5-pro")
@@ -49,14 +53,16 @@ if model is None:
         "Gemini model failed to initialize. Check model name or API key."
     )
 
-# Initialize Flask
+
+
 app = Flask(__name__)
 CORS(app)
 
-# Global session tracker for Interactive Chat
 user_sessions = {}
 
+
 # Load Question Paper Data
+
 try:
     df = pd.read_csv("QUESTIONPAPER.csv", encoding="latin1")
     df.columns = df.columns.str.lower()
@@ -66,6 +72,8 @@ try:
 except Exception as e:
     df = pd.DataFrame()
     print(f"CSV Load Failed: {e}")
+
+
 
 # --- HELPER FUNCTIONS ---
 
@@ -83,6 +91,8 @@ def format_questions(questions, limit=None):
         formatted_list.append(f"<b>[{year}] {sub} ({examtype})</b><br>Q: {question}")
     return "\n\n".join(formatted_list)
 
+
+
 def detect_intent_and_get_params(text, session_id="12345", language_code="en"):
     if not session_client:
         return None
@@ -95,6 +105,8 @@ def detect_intent_and_get_params(text, session_id="12345", language_code="en"):
     except Exception as e:
         print(f"Dialogflow API Error: {e}")
         return None
+
+
 
 def get_csv_questions(params):
     year = str(params.get("Year", "")).strip()
@@ -116,6 +128,9 @@ def get_csv_questions(params):
         return "I couldn't find any questions matching those criteria. Try being less specific!"
     return format_questions(filtered, limit)
 
+
+
+
 # --- ROUTES ---
 
 @app.route("/", methods=["GET"])
@@ -133,6 +148,7 @@ def home():
 
 
 # Route for Dialogflow / CSV Analysis
+    
 @app.route("/chat", methods=["POST"])
 def chat():
     req = request.get_json()
@@ -153,7 +169,9 @@ def chat():
         return jsonify({"fulfillmentText": csv_response})
     return jsonify({"fulfillmentText": query_result.fulfillment_text})
 
-# Route for Simple AI Chat (One-off)
+    
+# Route for Simple AI Chat 
+
 @app.route("/api_chat", methods=["POST"])
 def api_chat():
     req = request.get_json()
@@ -166,6 +184,8 @@ def api_chat():
     except Exception as e:
         return jsonify({"response": f"AI Error: {str(e)}"})
 
+#For quiz generator
+
 @app.route("/generate-questions", methods=["POST"])
 def generate_questions():
     data = request.get_json()
@@ -176,12 +196,10 @@ def generate_questions():
         return jsonify({"error": "Topic is required"}), 400
 
     try:
-        # We tell the AI to be extremely strict with the format
         prompt = f"Generate {count} MCQs on the topic '{topic}'. Return ONLY raw JSON with keys: questions, options, answer, explanation. Do not include markdown or extra text."
         response = model.generate_content(prompt)
         text = response.text.strip()
 
-        # Magic Fix: This finds the FIRST { and LAST } to extract only the JSON data
         start = text.find("{")
         end = text.rfind("}") + 1
         if start == -1 or end == 0:
@@ -193,10 +211,14 @@ def generate_questions():
         return jsonify(quiz_data)
         
     except Exception as e:
-        print(f"Quiz Error Details: {str(e)}") # This will show up in your Render logs
+        print(f"Quiz Error Details: {str(e)}") 
         return jsonify({"error": f"Internal Server Error: {str(e)}"}), 500
 
+
+
 # Route for Interactive Session-based Chat
+
+
 @app.route("/interactive-chat", methods=["POST"])
 def interactive_chat():
     data = request.get_json()
@@ -226,6 +248,10 @@ def interactive_chat():
         return jsonify({"response": reply})
     except Exception as e:
         return jsonify({"error": f"Gemini Error: {str(e)}"}), 500
+
+
+
+
 
 @app.route("/reset-session", methods=["POST"])
 def reset():
